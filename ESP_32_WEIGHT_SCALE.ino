@@ -4,29 +4,28 @@
 // #include <EEPROM.h>
 
 //pins:
-const int HX711_dout = 15; //white
-const int HX711_sck = 2; //green
+const int HX711_dout = 2; //white
+const int HX711_sck = 14; //green
 
 //HX711 constructor:
 HX711_ADC LoadCell(HX711_dout, HX711_sck);
 
-const int calVal_eepromAdress = 0;
+// const int calVal_eepromAdress = 0;
 unsigned long t = 0;
 
 void setup() {
-  Serial.begin(57600); delay(10);
+  Serial.begin(115200); delay(10);
   Serial.println();
   Serial.println("Starting...");
-
+/*______________________Load cell_____________________________*/
   LoadCell.begin();
   float calibrationValue; // calibration value (see example file "Calibration.ino")
-  calibrationValue = 696.0; // uncomment this if you want to set the calibration value in the sketch
+  calibrationValue = 242.0; // uncomment this if you want to set the calibration value in the sketch
 #if defined(ESP8266)|| defined(ESP32)
-  //EEPROM.begin(512); // uncomment this if you use ESP8266/ESP32 and want to fetch the calibration value from eeprom
+  //EEPROM.begin(512); // uncomment this if you use ESP8266/ESP32 
 #endif
-  //EEPROM.get(calVal_eepromAdress, calibrationValue); // uncomment this if you want to fetch the calibration value from eeprom
-
-  unsigned long stabilizingtime = 4000; // preciscion right after power-up can be improved by adding a few seconds of stabilizing time
+  //EEPROM.get(calVal_eepromAdress, calibrationValue); 
+  unsigned long stabilizingtime = 4000; 
   boolean _tare = true; //set this to false if you don't want tare to be performed in the next step
   LoadCell.start(stabilizingtime, _tare);
   if (LoadCell.getTareTimeoutFlag()) {
@@ -37,11 +36,13 @@ void setup() {
     LoadCell.setCalFactor(calibrationValue); // set calibration value (float)
     Serial.println("Startup is complete");
   }
+/*___________________________________________________*/
+
 }
 
 void loop() {
   static boolean newDataReady = 0;
-  const int serialPrintInterval = 100; //increase value to slow down serial print activity
+  const int serialPrintInterval = 300; //increase value to slow down serial print activity
 
   // check for new data/start next conversion:
   if (LoadCell.update()) newDataReady = true;
