@@ -4,16 +4,15 @@
 // #include <EEPROM.h>
 
 //pins:
-const int HX711_dout = 2; //white
-const int HX711_sck = 14; //green
+const int HX711_dout = 15; //white
+const int HX711_sck = 2; //green
 
 //HX711 constructor:
 HX711_ADC LoadCell(HX711_dout, HX711_sck);
 
 // const int calVal_eepromAdress = 0;
 unsigned long t = 0;
-String test = "testnSTRIng";
-float weight;
+char test = 't'; // must be '' and 1 char
 
 /*____________________________________ESP_NOW_________________*/
 // REPLACE WITH THE MAC Address of your receiver 
@@ -23,13 +22,13 @@ String incomingMsg;
 
 typedef struct struct_message {
     float weight;
-    String s;
+    char s;
 } struct_message;
 
 struct_message WeightReadings;
 
 typedef struct struct_message2 {
-    String Msg;
+    char Msg;
 } struct_message2;
 
 struct_message2 incomingMessages;
@@ -41,11 +40,13 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
 
 // Callback when data is received
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
-  memcpy(&WeightReadings, incomingData, sizeof(WeightReadings));
+  memcpy(&incomingMessages, incomingData, sizeof(incomingMessages));
   Serial.print("Bytes received: ");
   Serial.println(len);
+  Serial.print("Message received: ");
   incomingMsg = incomingMessages.Msg;
   Serial.println(incomingMsg);
+  Serial.println("__________________________");
 }
 void printMessage(){
   // Display Readings in Serial Monitor
@@ -77,12 +78,12 @@ void setup() {
     LoadCell.setCalFactor(calibrationValue); // set calibration value (float)
     Serial.println("Startup is complete");
   }
-/*____________________________________________________________*/
+/*___________________________Load Cell_end_____________________________*/
 /*___________________________ESP_NOW__________________________*/
 // Set device as a Wi-Fi Station
   WiFi.mode(WIFI_STA);
-  WiFi.begin();
-  //WiFi.disconnect();
+ // WiFi.begin();
+ // WiFi.disconnect();
 
   // Init ESP-NOW
   if (esp_now_init() != 0) {
@@ -90,13 +91,15 @@ void setup() {
     return;
   }
 
-  // Set ESP-NOW Role
- // esp_now_set_self_role(ESP_NOW_ROLE_COMBO); 
   // get the status of Trasnmitted packet
   esp_now_register_send_cb(OnDataSent);
   
   // Register peer
- //TODO
+  esp_now_peer_info_t peerInfo;
+  memcpy(peerInfo.peer_addr, broadcastAddress, 6);
+  peerInfo.channel = 0;  
+  peerInfo.encrypt = false;
+
   // Add peer        
   if (esp_now_add_peer(&peerInfo) != ESP_OK){
     Serial.println("Failed to add peer");
@@ -110,7 +113,7 @@ void setup() {
 
 void loop() {
   static boolean newDataReady = 0;
-  const int serialPrintInterval = 300; //increase value to slow down serial print activity
+  const int serialPrintInterval = 1000; //increase value to slow down serial print activity
 
   // check for new data/start next conversion:
   if (LoadCell.update()) newDataReady = true;
@@ -123,6 +126,9 @@ void loop() {
       Serial.println(i);
       newDataReady = 0;
       t = millis();
+      WeightReadings.weight = i;
+      WeightReadings.s = test;
+      esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &WeightReadings, sizeof(WeightReadings));
     }
   }
 
@@ -136,5 +142,4 @@ void loop() {
   if (LoadCell.getTareStatus() == true) {
     Serial.println("Tare complete");
   }
-
 }
