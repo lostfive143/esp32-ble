@@ -4,6 +4,7 @@
 #include <BLEDevice.h>
 #include <BLEServer.h>
 #include <BLEUtils.h>
+#include <BLE2902.h>
 // #include <EEPROM.h>
 // const int calVal_eepromAdress = 0;
 
@@ -252,13 +253,16 @@ void bleInit(){
   pCharacteristic = pService->createCharacteristic(
                       CHARACTERISTIC_UUID,
                       BLECharacteristic::PROPERTY_READ   |
-                      BLECharacteristic::PROPERTY_NOTIFY 
+                      BLECharacteristic::PROPERTY_WRITE  |
+                      BLECharacteristic::PROPERTY_NOTIFY |
+                      BLECharacteristic::PROPERTY_INDICATE
                     );
   pCharacteristic2 = pService->createCharacteristic(
                       CHARACTERISTIC2_UUID,
                       BLECharacteristic::PROPERTY_WRITE 
                     );
-
+  pCharacteristic->addDescriptor(new BLE2902());
+  pCharacteristic2->addDescriptor(new BLE2902());
   pCharacteristic->setAccessPermissions(ESP_GATT_PERM_READ_ENCRYPTED | ESP_GATT_PERM_WRITE_ENCRYPTED);
   pCharacteristic2->setAccessPermissions(ESP_GATT_PERM_READ_ENCRYPTED | ESP_GATT_PERM_WRITE_ENCRYPTED);
   pCharacteristic2->setCallbacks(new Characteristic2Callbacks());
