@@ -182,6 +182,10 @@ class Characteristic2Callbacks: public BLECharacteristicCallbacks
 
     if (value.length() > 0)
     {
+      if (value == "t"){
+        Serial.println("Tare initiated");
+        LoadCell.tareNoDelay();
+      }
       Serial.println("*********");
       Serial.print("New value: ");
       for (int i = 0; i < value.length(); i++)
