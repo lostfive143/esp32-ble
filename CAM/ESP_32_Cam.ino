@@ -31,10 +31,7 @@
 
 // VARS
 unsigned long t = 0;
-char message = 'd';
 // Define variables to store incoming readings
-float incomingWeight;
-String incomingMessage;
 
 /*_________________________________________ESP-NOW____________________*/
 // REPLACE WITH THE MAC Address of your receiver 
@@ -42,8 +39,7 @@ uint8_t broadcastAddress[] = {0x30, 0xAE, 0xA4, 0x97, 0xE4, 0xB0}; // esp32-wroo
 
 //Must match the receiver structure
 typedef struct struct_message {
-    float weight;
-    char s;
+    char incomingMsg[28];
 } struct_message;
 
 typedef struct struct_message2 {
@@ -51,11 +47,11 @@ typedef struct struct_message2 {
 } struct_message2;
 
 // Get readings
-struct_message WeightReadings;
+struct_message incommingCommand;
 
 // Create Send messages
 struct_message2 sentMessages;
-
+char message = '0';
 // Callback when data is sent
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
   Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
@@ -63,22 +59,21 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
 
 // Callback when data is received
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
-  memcpy(&WeightReadings, incomingData, sizeof(WeightReadings));
+  memcpy(&incommingCommand, incomingData, sizeof(incommingCommand));
   Serial.print("Bytes received: ");
   Serial.println(len);
-  incomingWeight = WeightReadings.weight;
-  Serial.print("Weight received: ");
-  Serial.println(WeightReadings.weight);
-  Serial.print("Char received: ");
-  Serial.println(WeightReadings.s);
+  // take photo 
+  takePhoto(String(incommingCommand.incomingMsg)); //add String to photo name
+  Serial.print("Message received: ");
+  Serial.println(incommingCommand.incomingMsg); // print string
+  sentMessages.Msg = message; 
+  esp_now_send(broadcastAddress, (uint8_t *) &sentMessages, sizeof(sentMessages)); // sent back status
+  Serial.print("SENT MESSAGE: ");
+  Serial.println(message);
+  message = '0';
 
 }
-void printMessage(){
-  // Display Readings in Serial Monitor
-  Serial.println("ESP-32 recieved weight: ");
-  Serial.print(incomingWeight);
-  Serial.print(incomingMessage);
-}
+
 /*________________________________________________ESP-NOW_END____________________*/ 
 
 
@@ -180,13 +175,13 @@ void loop() {
     // Show weight
     //Serial.println(incomingWeight, 1);
     // send message
-    if (millis() > t + serialPrintInterval) {
-        sentMessages.Msg = message;
-        esp_now_send(broadcastAddress, (uint8_t *) &sentMessages, sizeof(sentMessages));
-        Serial.print("SENT MESSAGE: ");
-        Serial.println(message);
-      t = millis();
-    }
+    // if (millis() > t + serialPrintInterval) {
+    //     sentMessages.Msg = message;
+    //     esp_now_send(broadcastAddress, (uint8_t *) &sentMessages, sizeof(sentMessages));
+    //     Serial.print("SENT MESSAGE: ");
+    //     Serial.println(message);
+    //   t = millis();
+    // }
   
 }
 
@@ -197,11 +192,12 @@ void takePhoto(String dateTime) {
   fb = esp_camera_fb_get();
   if (!fb) {
     Serial.println("Camera capture failed");
+    message = 'f';
     return;
   }
   // Save picture
   // Path where new picture will be saved in SD Card
-  String path = "/picture" + String(dateTime) + ".jpg";
+  String path = "/picture" + dateTime + ".jpg";
 
   fs::FS &fs = SD_MMC;
   Serial.printf("Picture file name: %s\n", path.c_str());
@@ -213,6 +209,7 @@ void takePhoto(String dateTime) {
   else {
     file.write(fb->buf, fb->len); // payload (image), payload length
     Serial.printf("Saved file to path: %s\n", path.c_str());
+    message = 's';
   }
   file.close();
   esp_camera_fb_return(fb);

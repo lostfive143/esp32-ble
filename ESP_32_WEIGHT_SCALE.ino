@@ -28,24 +28,21 @@ char weight[10];
 
 
 /*____________________________________ESP_NOW_________________*/
-char test = 't'; // must be '' and 1 char
+char incomingMsg; // must be '' and 1 char
 // REPLACE WITH THE MAC Address of your receiver 
 uint8_t broadcastAddress[] = {0xFC, 0xF5, 0xC4, 0x0D, 0xD6, 0x48};
-// Define variables to store incoming measage
-String incomingMsg;
-
+// send struct
 typedef struct struct_message {
-    float weight;
-    char s;
+    char msg[28];
 } struct_message;
 
-struct_message WeightReadings;
-
+// recieve struct
 typedef struct struct_message2 {
-    char Msg;
+    char photoStatus;
 } struct_message2;
 
-struct_message2 incomingMessages;
+struct_message msgToCam; // send
+struct_message2 msgFromCam; // recieve
 
 // Callback when data is sent
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
@@ -54,12 +51,19 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
 
 // Callback when data is received
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
-  memcpy(&incomingMessages, incomingData, sizeof(incomingMessages));
+  memcpy(&msgFromCam, incomingData, sizeof(msgFromCam));
   Serial.print("Bytes received: ");
   Serial.println(len);
   Serial.print("Message received: ");
-  incomingMsg = incomingMessages.Msg;
+  incomingMsg = msgFromCam.photoStatus;
   Serial.println(incomingMsg);
+  if(incomingMsg == 'f'){
+    Serial.println("!!!!!!!!!!!!!!!!!!!!!FAIL!!!!!!!!!!!!!!!!!!!!!!!");
+  }else if (incomingMsg == 's'){
+    Serial.println("!!!!!!!!!!!!!!!!!!!!!NOICE!!!!!!!!!!!!!!!!!!!!!!!");
+  }else{
+    Serial.println("!!!!!!!!!!!!Something wrong with photo status!!!!!!!!!!!");
+  }
   Serial.println("__________________________");
 }
 /*____________________________________ESP_NOW_end_________________*/
@@ -69,7 +73,7 @@ void setup() {
   Serial.println("Starting...");
   loadcellSetup();
   bleInit();
-  // espNowSetup();
+  espNowSetup();
 
 }
 
@@ -91,9 +95,6 @@ void loop() {
         sprintf(weight,"%4.2f",i);
         pCharacteristic->setValue(weight);
         pCharacteristic->notify();
-        // WeightReadings.weight = i;
-        // WeightReadings.s = test;
-        // esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &WeightReadings, sizeof(WeightReadings));
       }
     }
   }
@@ -185,6 +186,10 @@ class Characteristic2Callbacks: public BLECharacteristicCallbacks
       if (value == "t"){
         Serial.println("Tare initiated");
         LoadCell.tareNoDelay();
+      }
+      else {
+        strcpy(msgToCam.msg, value.c_str());
+        esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &msgToCam, sizeof(msgToCam));
       }
       Serial.println("*********");
       Serial.print("New value: ");
