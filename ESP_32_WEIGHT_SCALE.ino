@@ -73,8 +73,30 @@ void setup() {
   Serial.println("Starting...");
   loadcellSetup();
   bleInit();
-  espNowSetup();
+  // Set device as a Wi-Fi Station
+  WiFi.mode(WIFI_STA);
+  // Init ESP-NOW
+  if (esp_now_init() != 0) {
+    Serial.println("Error initializing ESP-NOW");
+    return;
+  }
+  // get the status of Trasnmitted packet
+  esp_now_register_send_cb(OnDataSent);
 
+  // Register peer
+  esp_now_peer_info_t peerInfo;
+  memcpy(peerInfo.peer_addr, broadcastAddress, 6);
+  peerInfo.channel = 0;  
+  peerInfo.encrypt = false;
+
+  // Add peer        
+  if (esp_now_add_peer(&peerInfo) != ESP_OK){
+    Serial.println("Failed to add peer");
+    return;
+  }
+  
+  // Register for a callback function that will be called when data is received
+  esp_now_register_recv_cb(OnDataRecv);
 }
 
 void loop() {
@@ -133,34 +155,7 @@ void loadcellSetup(){
 }
 
 void espNowSetup(){
-  // Set device as a Wi-Fi Station
-  WiFi.mode(WIFI_STA);
- // WiFi.begin();
- // WiFi.disconnect();
-
-  // Init ESP-NOW
-  if (esp_now_init() != 0) {
-    Serial.println("Error initializing ESP-NOW");
-    return;
-  }
-
-  // get the status of Trasnmitted packet
-  esp_now_register_send_cb(OnDataSent);
   
-  // Register peer
-  esp_now_peer_info_t peerInfo;
-  memcpy(peerInfo.peer_addr, broadcastAddress, 6);
-  peerInfo.channel = 0;  
-  peerInfo.encrypt = false;
-
-  // Add peer        
-  if (esp_now_add_peer(&peerInfo) != ESP_OK){
-    Serial.println("Failed to add peer");
-    return;
-  }
-  
-  // Register for a callback function that will be called when data is received
-  esp_now_register_recv_cb(OnDataRecv);
 }
 
 class ServerCallback: public BLEServerCallbacks {
